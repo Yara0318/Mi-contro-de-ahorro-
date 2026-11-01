@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#6d5bd0">
+<title>Mi Control de Ahorro</title>
+<style>
+:root{--purple:#6d5bd0;--purple-dark:#5140b0;--pink:#f7eaff;--ink:#29263a;--muted:#777389;--bg:#f7f6fc;--green:#16845b;--red:#c34c61;--line:#e8e5f2}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink)}
+header{background:linear-gradient(135deg,#6d5bd0,#9a78df);color:white;padding:28px 18px 34px;border-radius:0 0 28px 28px}
+.wrap{max-width:850px;margin:auto;padding:0 16px}header .wrap{padding:0 4px}h1{font-size:1.65rem;margin:0 0 5px}header p{margin:0;opacity:.9}
+main{margin:-18px auto 35px;position:relative}.card{background:white;border-radius:18px;padding:18px;margin-bottom:15px;box-shadow:0 5px 20px #33266a0b;border:1px solid #f0edf8}
+h2{font-size:1.08rem;margin:0 0 14px}label{display:block;font-size:.88rem;font-weight:650;margin-bottom:6px}input,select,button{font:inherit}input,select{width:100%;padding:12px;border:1px solid #ddd8ec;border-radius:11px;background:#fff;color:var(--ink);min-width:0}input:focus,select:focus{outline:2px solid #c7bcff;border-color:var(--purple)}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.field{margin-bottom:12px}.full{grid-column:1/-1}
+button{border:0;border-radius:11px;padding:12px 15px;cursor:pointer;font-weight:700}.primary{background:var(--purple);color:#fff}.primary:hover{background:var(--purple-dark)}.secondary{background:#f0edff;color:var(--purple-dark)}.danger{background:#fff0f1;color:var(--red);padding:8px 10px;font-size:.82rem}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:15px}.stat{background:#fff;border:1px solid var(--line);border-radius:15px;padding:14px 12px;min-width:0}.stat span{display:block;color:var(--muted);font-size:.78rem;margin-bottom:6px}.stat strong{font-size:clamp(1rem,3.5vw,1.35rem);overflow-wrap:anywhere}.stat.saved strong{color:var(--green)}.stat.spent strong{color:var(--red)}
+.progress{height:10px;background:#eeeaf9;border-radius:99px;overflow:hidden;margin:10px 0 5px}.bar{height:100%;width:0;background:linear-gradient(90deg,#6d5bd0,#b59bf2);transition:width .2s}
+.small{font-size:.82rem;color:var(--muted)}.transaction{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}.transaction:last-child{border-bottom:0}.transaction .desc{font-weight:650;overflow-wrap:anywhere}.transaction .meta{font-size:.8rem;color:var(--muted);margin-top:3px}.amount{font-weight:800;white-space:nowrap}.amount.income,.amount.saving{color:var(--green)}.amount.expense{color:var(--red)}.empty{text-align:center;color:var(--muted);padding:18px 0}
+.footer{text-align:center;color:var(--muted);font-size:.78rem;padding:5px 0 20px}
+.notice{background:#fff8df;color:#705d20;border-radius:10px;padding:10px 12px;font-size:.82rem;margin-top:10px}
+@media(max-width:520px){.grid{grid-template-columns:1fr}.stats{gap:7px}.stat{padding:12px 9px}.stat span{font-size:.72rem}.card{padding:15px}h1{font-size:1.45rem}}
+</style>
+</head>
+<body>
+<header><div class="wrap"><h1>💜 Mi Control de Ahorro</h1><p>Organiza tu sueldo, registra tus gastos y haz crecer tus ahorros.</p></div></header>
+<main class="wrap">
+  <section class="card">
+    <h2>1. Configura tu sueldo</h2>
+    <div class="grid">
+      <div class="field"><label for="frequency">¿Cómo te pagan?</label><select id="frequency"><option value="quincenal">Por quincena</option><option value="semanal">Por semana</option><option value="mensual">Por mes</option></select></div>
+      <div class="field"><label for="salary">Cantidad que recibes ($)</label><input id="salary" type="number" min="0" step="0.01" placeholder="Ej. 4500"></div>
+      <div class="field"><label for="goal">Meta de ahorro ($) (opcional)</label><input id="goal" type="number" min="0" step="0.01" placeholder="Ej. 10000"></div>
+      <div class="field" style="display:flex;align-items:end"><button class="primary" id="saveConfig" style="width:100%">Guardar configuración</button></div>
+    </div>
+    <div class="small" id="salaryHint">Agrega tu sueldo para calcular tu presupuesto.</div>
+  </section>
+
+  <section class="stats">
+    <div class="stat"><span>💵 Sueldo configurado</span><strong id="salaryStat">$0.00</strong></div>
+    <div class="stat saved"><span>🐷 Total ahorrado</span><strong id="savedStat">$0.00</strong></div>
+    <div class="stat spent"><span>🛍️ Total gastado</span><strong id="spentStat">$0.00</strong></div>
+  </section>
+
+  <section class="card">
+    <h2>📊 Tu progreso de ahorro</h2>
+    <div style="display:flex;justify-content:space-between;gap:10px"><span class="small">Ahorro frente a tu meta</span><strong id="progressText">0%</strong></div>
+    <div class="progress"><div class="bar" id="progressBar"></div></div>
+    <div class="small" id="remainingText">Configura una meta para ver tu progreso.</div>
+    <div class="notice" id="budgetNotice">Registra tu sueldo, tus ahorros y tus gastos para ver cuánto dinero te queda.</div>
+  </section>
+
+  <section class="card">
+    <h2>2. Registrar movimiento</h2>
+    <form id="movementForm">
+      <div class="grid">
+        <div class="field"><label for="type">Tipo de movimiento</label><select id="type"><option value="saving">Ahorro</option><option value="expense">Gasto</option><option value="income">Ingreso extra</option></select></div>
+        <div class="field"><label for="amount">Cantidad ($)</label><input id="amount" type="number" min="0.01" step="0.01" required placeholder="Ej. 300"></div>
+        <div class="field"><label for="category">Categoría</label><select id="category"><option>Ahorro general</option><option>Comida</option><option>Transporte / gasolina</option><option>Casa / servicios</option><option>Hija / familia</option><option>Salud</option><option>Deudas / pagos</option><option>Entretenimiento</option><option>Compras personales</option><option>Ingreso extra</option><option>Otro</option></select></div>
+        <div class="field"><label for="date">Fecha</label><input id="date" type="date" required></div>
+        <div class="field full"><label for="description">Descripción (opcional)</label><input id="description" type="text" maxlength="100" placeholder="Ej. Guardé para emergencias"></div>
+        <div class="field full"><button class="primary" type="submit" style="width:100%">＋ Agregar movimiento</button></div>
+      </div>
+    </form>
+  </section>
+
+  <section class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px"><h2 style="margin:0">🧾 Historial de movimientos</h2><button class="secondary" id="exportBtn" type="button">Exportar CSV</button></div>
+    <div class="grid" style="margin-top:12px">
+      <div class="field"><label for="filterType">Filtrar por tipo</label><select id="filterType"><option value="all">Todos</option><option value="saving">Ahorros</option><option value="expense">Gastos</option><option value="income">Ingresos extra</option></select></div>
+      <div class="field"><label for="filterMonth">Filtrar por mes</label><input id="filterMonth" type="month"></div>
+    </div>
+    <div id="history"><div class="empty">Todavía no has registrado movimientos.</div></div>
+    <div style="margin-top:14px"><button class="secondary" id="clearFilters" type="button">Quitar filtros</button></div>
+  </section>
+  <div class="footer">Tus datos se guardan en este navegador en este dispositivo. 💜</div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const money = n => new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN'}).format(Number(n)||0);
+const today = new Date();
+$('date').value = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+let state = {frequency:'quincenal', salary:0, goal:0, movements:[]};
+try { const old = JSON.parse(localStorage.getItem('miControlAhorro_v1')); if(old && typeof old==='object') state={...state,...old}; } catch(e){}
+$('frequency').value=state.frequency;
+$('salary').value=state.salary||'';
+$('goal').value=state.goal||'';
+function save(){localStorage.setItem('miControlAhorro_v1',JSON.stringify(state));}
+function render(){
+ const saved=state.movements.filter(m=>m.type==='saving').reduce((a,m)=>a+m.amount,0);
+ const spent=state.movements.filter(m=>m.type==='expense').reduce((a,m)=>a+m.amount,0);
+ const extra=state.movements.filter(m=>m.type==='income').reduce((a,m)=>a+m.amount,0);
+ const balance=Number(state.salary||0)+extra-saved-spent;
+ $('salaryStat').textContent=money(state.salary);
+ $('savedStat').textContent=money(saved);
+ $('spentStat').textContent=money(spent);
+ $('salaryHint').textContent=state.salary>0?`Recibes ${money(state.salary)} ${state.frequency==='quincenal'?'por quincena':state.frequency==='semanal'?'por semana':'por mes'}.`:'Agrega tu sueldo para calcular tu presupuesto.';
+ const goal=Number(state.goal||0), pct=goal>0?Math.min(100,Math.round(saved/goal*100)):0;
+ $('progressText').textContent=goal>0?pct+'%':'—';
+ $('progressBar').style.width=pct+'%';
+ $('remainingText').textContent=goal>0?(saved>=goal?'🎉 ¡Llegaste a tu meta de ahorro!':'Te faltan '+money(Math.max(0,goal-saved))+' para tu meta de '+money(goal)+'.'):'Agrega una meta de ahorro arriba para ver cuánto te falta.';
+ $('budgetNotice').textContent=balance>=0?`Saldo estimado de tu sueldo + ingresos extra − ahorros − gastos: ${money(balance)}.`:`Ojo: has registrado ${money(Math.abs(balance))} más de lo que cubren tu sueldo configurado e ingresos extra. Revisa tus movimientos si hace falta.`;
+ const type=$('filterType').value, month=$('filterMonth').value;
+ const list=[...state.movements].filter(m=>(type==='all'||m.type===type)&&(!month||m.date.startsWith(month))).sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);
+ const history=$('history');
+ if(!list.length){history.innerHTML='<div class="empty">No hay movimientos para mostrar.</div>';return;}
+ const labels={saving:'Ahorro',expense:'Gasto',income:'Ingreso extra'};
+ history.innerHTML=list.map(m=>`<div class="transaction"><div style="min-width:0"><div class="desc">${escapeHtml(m.description||m.category||labels[m.type])}</div><div class="meta">${labels[m.type]} · ${escapeHtml(m.category||'Otro')} · ${m.date}</div></div><div style="display:flex;align-items:center;gap:9px"><span class="amount ${m.type}">${m.type==='expense'?'−':'+'}${money(m.amount)}</span><button class="danger" type="button" data-delete="${m.id}" aria-label="Eliminar movimiento">Eliminar</button></div></div>`).join('');
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+$('saveConfig').addEventListener('click',()=>{
+ state.frequency=$('frequency').value;state.salary=Math.max(0,Number($('salary').value)||0);state.goal=Math.max(0,Number($('goal').value)||0);save();render();
+ $('saveConfig').textContent='¡Configuración guardada!';setTimeout(()=>$('saveConfig').textContent='Guardar configuración',1500);
+});
+$('movementForm').addEventListener('submit',e=>{
+ e.preventDefault();const amount=Number($('amount').value);
+ if(!Number.isFinite(amount)||amount<=0){alert('Escribe una cantidad mayor que cero.');return;}
+ state.movements.push({id:Date.now(),type:$('type').value,amount,category:$('category').value,date:$('date').value,description:$('description').value.trim()});
+ save();render();$('amount').value='';$('description').value='';
+});
+$('history').addEventListener('click',e=>{
+ const btn=e.target.closest('[data-delete]');if(!btn)return;
+ if(confirm('¿Quieres eliminar este movimiento?')){state.movements=state.movements.filter(m=>m.id!==Number(btn.dataset.delete));save();render();}
+});
+$('filterType').addEventListener('change',render);$('filterMonth').addEventListener('change',render);
+$('clearFilters').addEventListener('click',()=>{$('filterType').value='all';$('filterMonth').value='';render();});
+$('exportBtn').addEventListener('click',()=>{
+ const rows=[['Fecha','Tipo','Categoría','Descripción','Cantidad'],...state.movements.map(m=>[m.date,m.type,m.category,m.description,m.amount])];
+ const csv=rows.map(r=>r.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(',')).join('\r\n');
+ const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+ a.href=url;a.download='mis-movimientos-ahorro.csv';a.click();URL.revokeObjectURL(url);
+});
+render();
+</script>
+</body>
+</html>
